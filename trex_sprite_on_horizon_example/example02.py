@@ -1,6 +1,3 @@
-
-
-
 import pygame
 
 WIDTH = 2400
@@ -17,18 +14,10 @@ HDPI = { "CACTUS_LARGE" : { "x": 652, "y": 2 },
          "STAR" : { "x": 1276, "y": 2 }}
 image_sheet = "hidef_dino.png"
 
-
-
-
-
-
-
 x = HDPI["HORIZON"]["x"]
 y = HDPI["HORIZON"]["y"]
 background_width = 2400
 background_height = 24
-#dino_height =
-#dino_width = 
 BLACK = (0,0,0)
 
 class SpriteSheet():
@@ -149,7 +138,6 @@ while run:
     if keys[pygame.K_SPACE]:
         run = False
 
-#    print(new_x)
     window.fill( (247,247,247))
     new_horizon_image = sprite_sheet.getImage(new_x, initial_y, background_width - new_x, background_height)
     new_horizon_image2 = sprite_sheet.getImage(initial_x, initial_y, new_x, background_height)
@@ -162,6 +150,5 @@ while run:
     new_x = new_x % background_width
     pygame.time.delay(msPerFrame)
     frameCount+=1
-
 
 pygame.quit()
