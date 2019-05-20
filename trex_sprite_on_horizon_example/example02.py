@@ -137,7 +137,7 @@ class Horizon():
         self.config["HORIZON"]["y"] = sprite_info["HORIZON"]["y"]
         self.config["HORIZON"]["WIDTH"] = 2400
         self.config["HORIZON"]["HEIGHT"] = 24
-        self.x = self.config["HORIZON"]["x"]
+        self.rel_x = self.config["HORIZON"]["WIDTH"]
         self.config["HORIZON"]["IMAGE"] = self.sprite_sheet.getImage(self.config["HORIZON"]["x"],
                                                                      self.config["HORIZON"]["y"],
                                                                      self.config["HORIZON"]["WIDTH"],
@@ -145,16 +145,15 @@ class Horizon():
     def setSpeed(self, speed):
         self.speed = speed
     def updateHorizon(self, window):
-        self.rel_x = self.x % self.config["HORIZON"]["WIDTH"] + self.config["HORIZON"]["x"]
+        delta = self.rel_x - self.config["HORIZON"]["WIDTH"]
         window.blit(self.config["HORIZON"]["IMAGE"],
-                    (self.rel_x - self.config["HORIZON"]["WIDTH"],
-                     self.config["WINDOW"]["HEIGHT"] - self.config["HORIZON"]["HEIGHT"] - self.offset))
-        if self.rel_x < self.config["HORIZON"]["WIDTH"]:
+                    (delta, self.config["WINDOW"]["HEIGHT"] - self.config["HORIZON"]["HEIGHT"] - self.offset))
+        if delta < self.config["HORIZON"]["WIDTH"]:
             window.blit(self.config["HORIZON"]["IMAGE"],
                         (self.rel_x, self.config["WINDOW"]["HEIGHT"] - self.config["HORIZON"]["HEIGHT"] -
                          self.offset))
-        self.x -= self.speed
-
+        self.rel_x -= self.speed
+        self.rel_x %= self.config["HORIZON"]["WIDTH"]
 def game_window(width, height):
     if width <= 0 or height <= 0:
         raise Exception("Invalid width and height")
