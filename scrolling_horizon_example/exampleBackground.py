@@ -1,4 +1,5 @@
 import pygame
+import os
 
 WIDTH = 2400
 HEIGHT = 1200
@@ -12,7 +13,10 @@ HDPI = { "CACTUS_LARGE" : { "x": 652, "y": 2 },
          "TEXT_SPRITE" : { "x": 1294, "y": 2 },
          "TREX" : { "x": 1678, "y": 2 },
          "STAR" : { "x": 1276, "y": 2 }}
-image_sheet = "hidef_dino.png"
+
+cwd = os.getcwd()
+assets = os.path.join(cwd, "..", "assets")
+image_sheet = os.path.join(assets, "hidef_dino.png")
 
 x = HDPI["HORIZON"]["x"]
 y = HDPI["HORIZON"]["y"]
