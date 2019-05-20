@@ -1,7 +1,13 @@
 import pygame
+import os
+import math
 
-WIDTH = 2400
+WIDTH = 2000
 HEIGHT = 1200
+cwd = os.getcwd()
+assets = os.path.join(cwd, "..", "assets")
+image_sheet = os.path.join(assets, "hidef_dino.png")
+
 HDPI = { "CACTUS_LARGE" : { "x": 652, "y": 2 },
          "CACTUS_SMALL": { "x": 446, "y": 2 },
          "CLOUD": { "x": 166, "y": 2 },
@@ -12,10 +18,10 @@ HDPI = { "CACTUS_LARGE" : { "x": 652, "y": 2 },
          "TEXT_SPRITE" : { "x": 1294, "y": 2 },
          "TREX" : { "x": 1678, "y": 2 },
          "STAR" : { "x": 1276, "y": 2 }}
-image_sheet = "hidef_dino.png"
 
 x = HDPI["HORIZON"]["x"]
 y = HDPI["HORIZON"]["y"]
+SPEED = 6
 background_width = 2400
 background_height = 24
 BLACK = (0,0,0)
@@ -31,7 +37,6 @@ class SpriteSheet():
         return image
 
 class Dino():
-#    msPerFrame = 1000 / FPS
     trex = {}
     jumping = False
     ducking = False
@@ -40,6 +45,8 @@ class Dino():
     speedDrop = False
     jumpCount = 0
     jumpspotX = 0
+    runningFrameIndex = 0
+    currentFrameCount = 0
     config = {"WIDTH"  : 88,
               "WIDTH_DUCK" : 118,
               "HEIGHT" : 94,
@@ -92,12 +99,21 @@ class Dino():
         self.trex["DUCKING"][1]["IMAGE"] =sprite_sheet.getImage(self.trex["DUCKING"][1]["x"],
                                                                 self.trex["DUCKING"][1]["y"],
                                                                 self.config["WIDTH_DUCK"], self.config["HEIGHT_DUCK"])
+    def setFPS(self, FPS):
+        self.msPerFrame = int(1000 / FPS)
+
+    def getRunningFrame(self):
+        self.currentFrameCount += 1
+        self.currentFrameCount %= self.msPerFrame
+        if self.currentFrameCount == 0:
+            self.runningFrameIndex += 1
+            self.runningFrameIndex %= 2
+        return self.trex["RUNNING"][self.runningFrameIndex]["IMAGE"]
     def getIdleImage(self):
         return self.trex["IDLE"]["IMAGE"]
 
 class Cloud():
-    cloud = {"WIDTH": 84,
-             "HEIGHT": 27}
+    cloud = {"WIDTH": 84, "HEIGHT": 27}
     def __init__(self, sprite_sheet, sprite_info):
         self.cloud["x"] = sprite_info["CLOUD"]["x"]
         self.cloud["y"] = sprite_info["CLOUD"]["y"]
@@ -109,6 +125,36 @@ class Cloud():
 #        random.randrang
 
 
+class Horizon():
+    config = {}
+    offset = 100
+    speed = 1
+    def __init__(self, sprite_sheet, sprite_info, width, height):
+        self.sprite_sheet = sprite_sheet
+        self.config["WINDOW"] = {"HEIGHT" : height}
+        self.config["WINDOW"]["WIDTH"] = width
+        self.config["HORIZON"] = {"x" : sprite_info["HORIZON"]["x"]}
+        self.config["HORIZON"]["y"] = sprite_info["HORIZON"]["y"]
+        self.config["HORIZON"]["WIDTH"] = 2400
+        self.config["HORIZON"]["HEIGHT"] = 24
+        self.x = self.config["HORIZON"]["x"]
+        self.config["HORIZON"]["IMAGE"] = self.sprite_sheet.getImage(self.config["HORIZON"]["x"],
+                                                                     self.config["HORIZON"]["y"],
+                                                                     self.config["HORIZON"]["WIDTH"],
+                                                                     self.config["HORIZON"]["HEIGHT"])
+    def setSpeed(self, speed):
+        self.speed = speed
+    def updateHorizon(self, window):
+        self.rel_x = self.x % self.config["HORIZON"]["WIDTH"] + self.config["HORIZON"]["x"]
+        window.blit(self.config["HORIZON"]["IMAGE"],
+                    (self.rel_x - self.config["HORIZON"]["WIDTH"],
+                     self.config["WINDOW"]["HEIGHT"] - self.config["HORIZON"]["HEIGHT"] - self.offset))
+        if self.rel_x < self.config["HORIZON"]["WIDTH"]:
+            window.blit(self.config["HORIZON"]["IMAGE"],
+                        (self.rel_x, self.config["WINDOW"]["HEIGHT"] - self.config["HORIZON"]["HEIGHT"] -
+                         self.offset))
+        self.x -= self.speed
+
 def game_window(width, height):
     if width <= 0 or height <= 0:
         raise Exception("Invalid width and height")
@@ -117,7 +163,7 @@ def game_window(width, height):
     return win
 ##########################################################
 FPS = 60
-msPerFrame = int(1000 / FPS)
+msPerFrame = math.ceil(1000 / FPS)
 window = game_window(WIDTH, HEIGHT)
 sprite_sheet = SpriteSheet(image_sheet)
 initial_x = HDPI["HORIZON"]["x"]
@@ -126,29 +172,30 @@ initial_horizon_image = sprite_sheet.getImage(initial_x, initial_y, background_w
 window.blit(initial_horizon_image, (0, HEIGHT - background_height - 100))
 cloud = Cloud(sprite_sheet, HDPI)
 dino = Dino(sprite_sheet, HDPI)
+dino.setFPS(FPS)
+horizon = Horizon(sprite_sheet, HDPI, WIDTH, HEIGHT)
+horizon.setSpeed(6)
 run = True
 new_x = initial_x
 new_background_width = 0
-frameCount = 0
 while run:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_SPACE]:
+    if keys[pygame.K_ESCAPE]:
         run = False
-
+    if keys[pygame.K_UP] or  keys[pygame.K_SPACE]:
+        jump = True
+        print("Jump")
+    if keys[pygame.K_DOWN]:
+        duck = True
+        print("Duck")
     window.fill( (247,247,247))
-    new_horizon_image = sprite_sheet.getImage(new_x, initial_y, background_width - new_x, background_height)
-    new_horizon_image2 = sprite_sheet.getImage(initial_x, initial_y, new_x, background_height)
-    window.blit(new_horizon_image, (0, HEIGHT - background_height - 100))
-    window.blit(new_horizon_image2, (background_width - new_x, HEIGHT - background_height - 100))
+    horizon.updateHorizon(window)
     window.blit(cloud.getCloud(), (300, 200))
-    window.blit(dino.getIdleImage(), (10, HEIGHT - background_height - 160))
-    pygame.display.flip()
-    new_x += 10
-    new_x = new_x % background_width
+    window.blit(dino.getRunningFrame(), (10, HEIGHT - background_height - 160))
+    pygame.display.update()
     pygame.time.delay(msPerFrame)
-    frameCount+=1
 
 pygame.quit()
