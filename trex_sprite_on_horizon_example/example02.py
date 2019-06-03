@@ -1,6 +1,7 @@
 import pygame
 import os
 import math
+import time
 
 WIDTH = 2000
 HEIGHT = 1200
@@ -40,22 +41,28 @@ class Dino():
     trex = {}
     jumping = False
     ducking = False
-    jumpVelocity = 0
+    groundYPos = 0
+    yPos = 0
+    jumpVelocity = 0.0
     reachedMinHeight = False
     speedDrop = False
     jumpCount = 0
     jumpspotX = 0
     runningFrameIndex = 0
     currentFrameCount = 0
+    jumpVelocity = 0.0
     config = {"WIDTH"  : 88,
               "WIDTH_DUCK" : 118,
               "HEIGHT" : 94,
               "HEIGHT_DUCK" : 60,
               "START_X_POS" : 50,
-              "MAX_JUMP_HEIGHT" : 30,
-              "MIN_JUMP_HEIGHT" : 30,
+              "MAX_JUMP_HEIGHT" : 300,
+              "MIN_JUMP_HEIGHT" : 300,
               "SPRITE_WIDTH" : 262,
-              "DROP_VELOCITY" : -5,
+              "DROP_VELOCITY" : 5.0,
+              "GRAVITY" : 0.6,
+              "INITIAL_JUMP_VELOCITY" : -18.0,
+              "STATE": "RUNNING"
     }
     animationFrames = {"WAITING" : {"FRAMES" : [44, 0], "MS_PER_FRAME": 1000/3},
                        "RUNNING" : {"FRAMES" : [88, 132], "MS_PER_FRAME": 1000/12},
@@ -101,16 +108,51 @@ class Dino():
                                                                 self.config["WIDTH_DUCK"], self.config["HEIGHT_DUCK"])
     def setFPS(self, FPS):
         self.msPerFrame = int(1000 / FPS)
+    def setJumping(self):
+        self.jumping = True
+    def isJumping(self):
+        return self.jumping
+    def getFrame(self):
+        if self.jumping:
+            return self.trex["IDLE"]["IMAGE"]
+        else:
+            self.currentFrameCount += 1
+            self.currentFrameCount %= self.msPerFrame
+            if self.currentFrameCount == 0:
+                self.runningFrameIndex += 1
+                self.runningFrameIndex %= 2
+            return self.trex["RUNNING"][self.runningFrameIndex]["IMAGE"]
+    def setGroundYPos(self, yPos):
+        self.groundYPos = yPos
+    def getYPos(self):
+        if self.yPos <= self.groundYPos - self.config["MAX_JUMP_HEIGHT"] and self.config["STATE"] == "JUMPING":
+            print("Falling")
+            self.jumpVelocity = self.config["DROP_VELOCITY"]
+            self.config["STATE"] = "FALLING"
+        elif self.yPos >= self.groundYPos and self.config["STATE"] == "FALLING":
+            print("On the ground")
+            self.jumping = False
+            self.config["STATE"] = "RUNNING"
+            self.jumpVelocity = 0
+            self.yPos = self.groundYPos
+        elif self.config["STATE"] == "RUNNING" and self.jumping:
+            print("Jump from the ground")
+            self.config["STATE"] = "JUMPING"
+            self.yPos = self.groundYPos
+            self.jumpVelocity = self.config["INITIAL_JUMP_VELOCITY"]
 
-    def getRunningFrame(self):
-        self.currentFrameCount += 1
-        self.currentFrameCount %= self.msPerFrame
-        if self.currentFrameCount == 0:
-            self.runningFrameIndex += 1
-            self.runningFrameIndex %= 2
-        return self.trex["RUNNING"][self.runningFrameIndex]["IMAGE"]
-    def getIdleImage(self):
-        return self.trex["IDLE"]["IMAGE"]
+        if self.config["STATE"] == "JUMPING" and self.jumpVelocity >= 0:
+            print("Falling")
+            self.jumpVelocity = self.config["DROP_VELOCITY"]
+            self.config["STATE"] = "FALLING"
+        elif self.config["STATE"] != "RUNNING":
+            self.yPos += self.jumpVelocity
+            self.jumpVelocity += self.config["GRAVITY"]
+        else:
+            self.yPos = self.groundYPos
+            self.jumpVelocity = 0
+
+        return self.yPos
 
 class Cloud():
     cloud = {"WIDTH": 84, "HEIGHT": 27}
@@ -155,6 +197,7 @@ class Horizon():
         self.rel_x -= self.speed
         self.rel_x %= self.config["HORIZON"]["WIDTH"]
 def game_window(width, height):
+    pygame.init()
     if width <= 0 or height <= 0:
         raise Exception("Invalid width and height")
     win = pygame.display.set_mode((width,height))
@@ -162,6 +205,7 @@ def game_window(width, height):
     return win
 ##########################################################
 FPS = 60
+groundYPos = HEIGHT - background_height - 160
 msPerFrame = math.ceil(1000 / FPS)
 window = game_window(WIDTH, HEIGHT)
 sprite_sheet = SpriteSheet(image_sheet)
@@ -170,14 +214,22 @@ initial_y = HDPI["HORIZON"]["y"]
 initial_horizon_image = sprite_sheet.getImage(initial_x, initial_y, background_width, background_height)
 window.blit(initial_horizon_image, (0, HEIGHT - background_height - 100))
 cloud = Cloud(sprite_sheet, HDPI)
+yPos = 0
 dino = Dino(sprite_sheet, HDPI)
 dino.setFPS(FPS)
+dino.setGroundYPos(groundYPos)
 horizon = Horizon(sprite_sheet, HDPI, WIDTH, HEIGHT)
 horizon.setSpeed(6)
 run = True
 new_x = initial_x
 new_background_width = 0
+clock = pygame.time.Clock()
+old_time = pygame.time.get_ticks()
 while run:
+    new_time = pygame.time.get_ticks()
+    waited = new_time - old_time
+    old_time = new_time
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
@@ -185,16 +237,22 @@ while run:
     if keys[pygame.K_ESCAPE]:
         run = False
     if keys[pygame.K_UP] or  keys[pygame.K_SPACE]:
-        jump = True
-        print("Jump")
+        if not dino.isJumping():
+            dino.setJumping()
     if keys[pygame.K_DOWN]:
         duck = True
         print("Duck")
     window.fill( (247,247,247))
     horizon.updateHorizon(window)
     window.blit(cloud.getCloud(), (300, 200))
-    window.blit(dino.getRunningFrame(), (10, HEIGHT - background_height - 160))
+    if dino.isJumping():
+        yPos = dino.getYPos()
+    else:
+        yPos = groundYPos
+    window.blit(dino.getFrame(), (10, yPos))
     pygame.display.update()
-    pygame.time.delay(msPerFrame)
+#    pygame.time.delay(msPerFrame)
+    if waited < 60:
+        time.sleep(1.0/(120 - waited))
 
 pygame.quit()
