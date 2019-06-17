@@ -166,6 +166,32 @@ class Cloud():
 #    def randomCloud(self):
 #        random.randrang
 
+class Cactus():
+    cactus = {}
+    def __init__(self, sprite_sheet, sprite_info):
+        self.sprite_sheet = sprite_sheet
+        self.cactus["LARGE"] = {"x" : sprite_info["CACTUS_LARGE"]["x"]}
+        self.cactus["LARGE"]["y"] = sprite_info["CACTUS_LARGE"]["y"]
+        self.cactus["SMALL"] = {"x" : sprite_info["CACTUS_SMALL"]["x"]}
+        self.cactus["SMALL"]["y"] = sprite_info["CACTUS_SMALL"]["y"]
+        self.cactus["LARGE"]["HEIGHT"] = 100
+        self.cactus["LARGE"]["WIDTH"] = 49
+        self.cactus["LARGE"]["IMAGE"] = self.sprite_sheet.getImage(self.cactus["LARGE"]["x"],
+                                                                   self.cactus["LARGE"]["y"],
+                                                                   self.cactus["LARGE"]["WIDTH"],
+                                                                   self.cactus["LARGE"]["HEIGHT"])
+        self.cactus["SMALL"]["HEIGHT"] = 70
+        self.cactus["SMALL"]["WIDTH"] = 34
+        self.cactus["SMALL"]["IMAGE"] = self.sprite_sheet.getImage(self.cactus["SMALL"]["x"],
+                                                                   self.cactus["SMALL"]["y"],
+                                                                   self.cactus["SMALL"]["WIDTH"],
+                                                                   self.cactus["SMALL"]["HEIGHT"])
+    def setGroundPosition(self, groundYPos):
+        self.cactus["GROUND"] = {"y" : groundYPos}
+    def updateCactus(self, window, x):
+        window.blit(self.getCactus("LARGE"), (x, self.cactus["GROUND"]["y"]))
+    def getCactus(self, size):
+        return self.cactus[size]["IMAGE"]
 
 class Horizon():
     config = {}
@@ -196,6 +222,8 @@ class Horizon():
                          self.offset))
         self.rel_x -= self.speed
         self.rel_x %= self.config["HORIZON"]["WIDTH"]
+        return self.rel_x
+
 def game_window(width, height):
     pygame.init()
     if width <= 0 or height <= 0:
@@ -215,6 +243,8 @@ initial_horizon_image = sprite_sheet.getImage(initial_x, initial_y, background_w
 window.blit(initial_horizon_image, (0, HEIGHT - background_height - 100))
 cloud = Cloud(sprite_sheet, HDPI)
 yPos = 0
+cactus = Cactus(sprite_sheet, HDPI)
+cactus.setGroundPosition(groundYPos)
 dino = Dino(sprite_sheet, HDPI)
 dino.setFPS(FPS)
 dino.setGroundYPos(groundYPos)
@@ -242,8 +272,12 @@ while run:
     if keys[pygame.K_DOWN]:
         duck = True
         print("Duck")
+    if keys[pygame.K_F5]:
+        showMenu = True
+
     window.fill( (247,247,247))
-    horizon.updateHorizon(window)
+    currentX = horizon.updateHorizon(window)
+    cactus.updateCactus(window, currentX)
     window.blit(cloud.getCloud(), (300, 200))
     if dino.isJumping():
         yPos = dino.getYPos()
