@@ -59,9 +59,9 @@ class Dino():
               "MAX_JUMP_HEIGHT" : 300,
               "MIN_JUMP_HEIGHT" : 300,
               "SPRITE_WIDTH" : 262,
-              "DROP_VELOCITY" : 5.0,
+              "DROP_VELOCITY" : 6.0,
               "GRAVITY" : 0.6,
-              "INITIAL_JUMP_VELOCITY" : -18.0,
+              "INITIAL_JUMP_VELOCITY" : -15.0,
               "STATE": "RUNNING"
     }
     animationFrames = {"WAITING" : {"FRAMES" : [44, 0], "MS_PER_FRAME": 1000/3},
