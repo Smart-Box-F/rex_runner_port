@@ -72,6 +72,9 @@ class Dino():
 
     def __init__(self, sprite_sheet, sprite_info):
         self.sprite_sheet = sprite_sheet
+        self.collided = False
+        self.frameState = "RUNNING"
+        self.startingX = 0
         #Creating Idle entry
         self.trex["IDLE"] = {"x" : sprite_info["TREX"]["x"]}
         self.trex["IDLE"]["y"] = sprite_info["TREX"]["y"]
@@ -106,14 +109,41 @@ class Dino():
         self.trex["DUCKING"][1]["IMAGE"] =sprite_sheet.getImage(self.trex["DUCKING"][1]["x"],
                                                                 self.trex["DUCKING"][1]["y"],
                                                                 self.config["WIDTH_DUCK"], self.config["HEIGHT_DUCK"])
+    def collide(self, xObj, yObj):
+        xCollide = False
+        yCollide = False
+        dinoMaxX = self.startingX + self.config["WIDTH"]
+        dinoMinX = self.startingX
+        dinoMaxY = self.getYPos()
+        dinoMinY = dinoMaxY - self.config["HEIGHT"]
+        objMinX = xObj[0]
+        objMaxX = xObj[1]
+        objMinY = yObj[0]
+        objMaxY = yObj[1]
+
+        if dinoMaxX >= objMinX and dinoMaxX < objMaxX:
+            xCollide = True
+        elif dinoMinX >= objMinX and dinoMinX < objMinX:
+            xCollide = True
+        if dinoMaxY >= objMaxY:
+            yCollide = True
+        if xCollide and yCollide:
+            self.collided = True
+        return self.collided
     def setFPS(self, FPS):
         self.msPerFrame = int(1000 / FPS)
-    def setJumping(self):
-        self.jumping = True
+    def setXPos(self, x):
+        self.startingX = x
+    def setJumping(self, jumping):
+        self.jumping = jumping
+    def setCollide(self, collide):
+        self.collide = collide
     def isJumping(self):
         return self.jumping
     def getFrame(self):
-        if self.jumping:
+        if self.collided:
+            return self.trex["COLLIDE"]["IMAGE"]
+        elif self.jumping:
             return self.trex["IDLE"]["IMAGE"]
         else:
             self.currentFrameCount += 1
@@ -126,23 +156,19 @@ class Dino():
         self.groundYPos = yPos
     def getYPos(self):
         if self.yPos <= self.groundYPos - self.config["MAX_JUMP_HEIGHT"] and self.config["STATE"] == "JUMPING":
-            print("Falling")
             self.jumpVelocity = self.config["DROP_VELOCITY"]
             self.config["STATE"] = "FALLING"
         elif self.yPos >= self.groundYPos and self.config["STATE"] == "FALLING":
-            print("On the ground")
             self.jumping = False
             self.config["STATE"] = "RUNNING"
             self.jumpVelocity = 0
             self.yPos = self.groundYPos
         elif self.config["STATE"] == "RUNNING" and self.jumping:
-            print("Jump from the ground")
             self.config["STATE"] = "JUMPING"
             self.yPos = self.groundYPos
             self.jumpVelocity = self.config["INITIAL_JUMP_VELOCITY"]
 
         if self.config["STATE"] == "JUMPING" and self.jumpVelocity >= 0:
-            print("Falling")
             self.jumpVelocity = self.config["DROP_VELOCITY"]
             self.config["STATE"] = "FALLING"
         elif self.config["STATE"] != "RUNNING":
@@ -192,7 +218,10 @@ class Cactus():
         window.blit(self.getCactus("LARGE"), (x, self.cactus["GROUND"]["y"]))
     def getCactus(self, size):
         return self.cactus[size]["IMAGE"]
-
+    def getHeight(self):
+        return self.cactus["LARGE"]["HEIGHT"]
+    def getWidth(self):
+        return self.cactus["LARGE"]["WIDTH"]
 class Horizon():
     config = {}
     offset = 100
@@ -212,6 +241,15 @@ class Horizon():
                                                                      self.config["HORIZON"]["HEIGHT"])
     def setSpeed(self, speed):
         self.speed = speed
+    def getHorizon(self, window):
+        delta = self.rel_x - self.config["HORIZON"]["WIDTH"]
+        window.blit(self.config["HORIZON"]["IMAGE"],
+                    (delta, self.config["WINDOW"]["HEIGHT"] - self.config["HORIZON"]["HEIGHT"] - self.offset))
+        if delta < self.config["HORIZON"]["WIDTH"]:
+            window.blit(self.config["HORIZON"]["IMAGE"],
+                        (self.rel_x, self.config["WINDOW"]["HEIGHT"] - self.config["HORIZON"]["HEIGHT"] -
+                         self.offset))
+        return self.rel_x
     def updateHorizon(self, window):
         delta = self.rel_x - self.config["HORIZON"]["WIDTH"]
         window.blit(self.config["HORIZON"]["IMAGE"],
@@ -231,6 +269,9 @@ def game_window(width, height):
     win = pygame.display.set_mode((width,height))
     win.fill( (247,247,247))
     return win
+
+
+
 ##########################################################
 FPS = 60
 groundYPos = HEIGHT - background_height - 160
@@ -239,6 +280,7 @@ window = game_window(WIDTH, HEIGHT)
 sprite_sheet = SpriteSheet(image_sheet)
 initial_x = HDPI["HORIZON"]["x"]
 initial_y = HDPI["HORIZON"]["y"]
+dinoXPos = 10
 initial_horizon_image = sprite_sheet.getImage(initial_x, initial_y, background_width, background_height)
 window.blit(initial_horizon_image, (0, HEIGHT - background_height - 100))
 cloud = Cloud(sprite_sheet, HDPI)
@@ -247,6 +289,7 @@ cactus = Cactus(sprite_sheet, HDPI)
 cactus.setGroundPosition(groundYPos)
 dino = Dino(sprite_sheet, HDPI)
 dino.setFPS(FPS)
+dino.setXPos(dinoXPos)
 dino.setGroundYPos(groundYPos)
 horizon = Horizon(sprite_sheet, HDPI, WIDTH, HEIGHT)
 horizon.setSpeed(6)
@@ -255,6 +298,9 @@ new_x = initial_x
 new_background_width = 0
 clock = pygame.time.Clock()
 old_time = pygame.time.get_ticks()
+duck = False
+collided = False
+
 while run:
     new_time = pygame.time.get_ticks()
     waited = new_time - old_time
@@ -268,7 +314,7 @@ while run:
         run = False
     if keys[pygame.K_UP] or  keys[pygame.K_SPACE]:
         if not dino.isJumping():
-            dino.setJumping()
+            dino.setJumping(True)
     if keys[pygame.K_DOWN]:
         duck = True
         print("Duck")
@@ -276,14 +322,21 @@ while run:
         showMenu = True
 
     window.fill( (247,247,247))
-    currentX = horizon.updateHorizon(window)
+    if collided:
+        currentX = horizon.getHorizon(window)
+        yPos = groundYPos
+        window.blit(dino.getFrame(), (dinoXPos, yPos))
+    else:
+        currentX = horizon.updateHorizon(window)
+        if dino.isJumping():
+            yPos = dino.getYPos()
+        else:
+            yPos = groundYPos
+        collided = dino.collide((currentX, currentX + cactus.getWidth()),
+                                (groundYPos - cactus.getHeight(), groundYPos))
+        window.blit(dino.getFrame(), (10, yPos))
     cactus.updateCactus(window, currentX)
     window.blit(cloud.getCloud(), (300, 200))
-    if dino.isJumping():
-        yPos = dino.getYPos()
-    else:
-        yPos = groundYPos
-    window.blit(dino.getFrame(), (10, yPos))
     pygame.display.update()
 #    pygame.time.delay(msPerFrame)
     if waited < 60:
