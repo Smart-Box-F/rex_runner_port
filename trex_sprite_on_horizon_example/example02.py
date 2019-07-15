@@ -112,20 +112,22 @@ class Dino():
     def collide(self, xObj, yObj):
         xCollide = False
         yCollide = False
-        dinoMaxX = self.startingX + self.config["WIDTH"]
+        dinoMaxX = self.startingX + self.config["WIDTH"] - 30
         dinoMinX = self.startingX
-        dinoMaxY = self.getYPos()
+        dinoMaxY = self.yPos
         dinoMinY = dinoMaxY - self.config["HEIGHT"]
         objMinX = xObj[0]
         objMaxX = xObj[1]
-        objMinY = yObj[0]
+        objMinY = yObj[0] + 30
         objMaxY = yObj[1]
 
-        if dinoMaxX >= objMinX and dinoMaxX < objMaxX:
+        if dinoMaxX >= objMinX and dinoMaxX <= objMaxX:
             xCollide = True
-        elif dinoMinX >= objMinX and dinoMinX < objMinX:
+        elif dinoMinX >= objMinX and dinoMinX < objMaxX:
             xCollide = True
-        if dinoMaxY >= objMaxY:
+        elif dinoMaxX > objMaxX and dinoMinX < objMinX:
+            xCollide = True
+        if dinoMaxY > objMinY:
             yCollide = True
         if xCollide and yCollide:
             self.collided = True
@@ -284,7 +286,7 @@ dinoXPos = 10
 initial_horizon_image = sprite_sheet.getImage(initial_x, initial_y, background_width, background_height)
 window.blit(initial_horizon_image, (0, HEIGHT - background_height - 100))
 cloud = Cloud(sprite_sheet, HDPI)
-yPos = 0
+yPos = groundYPos
 cactus = Cactus(sprite_sheet, HDPI)
 cactus.setGroundPosition(groundYPos)
 dino = Dino(sprite_sheet, HDPI)
@@ -324,16 +326,15 @@ while run:
     window.fill( (247,247,247))
     if collided:
         currentX = horizon.getHorizon(window)
-        yPos = groundYPos
         window.blit(dino.getFrame(), (dinoXPos, yPos))
     else:
         currentX = horizon.updateHorizon(window)
+        collided = dino.collide((currentX, currentX + cactus.getWidth()),
+                                (groundYPos - cactus.getHeight(), groundYPos))
         if dino.isJumping():
             yPos = dino.getYPos()
         else:
             yPos = groundYPos
-        collided = dino.collide((currentX, currentX + cactus.getWidth()),
-                                (groundYPos - cactus.getHeight(), groundYPos))
         window.blit(dino.getFrame(), (10, yPos))
     cactus.updateCactus(window, currentX)
     window.blit(cloud.getCloud(), (300, 200))
