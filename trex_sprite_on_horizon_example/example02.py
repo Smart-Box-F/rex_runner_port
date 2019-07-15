@@ -32,7 +32,8 @@ class SpriteSheet():
     def __init__(self, filename):
         self.sprite_sheet = pygame.image.load(filename).convert()
     def getImage(self, x, y, width, height):
-        image = pygame.Surface([width, height]).convert()
+        image = pygame.Surface([width, height], pygame.SRCALPHA)
+
         image.blit(self.sprite_sheet, (0,0), (x, y, width, height) )
         image.set_colorkey(BLACK)
         return image
