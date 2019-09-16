@@ -23,12 +23,11 @@ HDPI = { "CACTUS_LARGE" : { "x": 652, "y": 2 },
          "TEXT_SPRITE" : { "x": 1294, "y": 2 },
          "TREX" : { "x": 1678, "y": 2 },
          "STAR" : { "x": 1276, "y": 2 }}
-
 x = HDPI["HORIZON"]["x"]
 y = HDPI["HORIZON"]["y"]
 SPEED = 6
 background_width = 2400
-background_height = 24
+
 BLACK = (0,0,0)
 
 class SpriteSheet():
@@ -73,10 +72,13 @@ class Dino():
                        "JUMPING" : {"FRAMES" : [0], "MS_PER_FRAME": 1000/60},
                        "DUCKING" : {"FRAMES" : [264,323], "MS_PER_FRAME": 1000/8}}
     def __init__(self, sprite_sheet, sprite_info, groundYPosValue, startingX, FPS):
+        self._groundYPos = 0
+        self._msPerFrame = 16
         self.sprite_sheet = sprite_sheet
         self.collided = False
         self.frameState = "RUNNING"
-        self._groundYPos = groundYPosValue
+        self.offset = 20 #offset for 720p
+        self.groundYPos = groundYPosValue
         self._yPos = groundYPosValue
         self._startingX = startingX
         self.msPerFrame = FPS
@@ -147,7 +149,8 @@ class Dino():
         return self._groundYPos
     @groundYPos.setter
     def groundYPos(self, value):
-        self._groundYPos = value
+        offset = int(self.offset)
+        self._groundYPos = value - self.config["HEIGHT"] + offset
     @property
     def msPerFrame(self):
         return self._msPerFrame
@@ -207,12 +210,10 @@ class Cloud():
     def getCloud(self):
         return self.sprite_sheet.getImage(self.cloud["x"], self.cloud["y"],
                                           self.cloud["WIDTH"], self.cloud["HEIGHT"])
-#    def randomCloud(self):
-#        random.randrang
 
 class Cactus():
     cactus = {}
-    def __init__(self, sprite_sheet, sprite_info):
+    def __init__(self, sprite_sheet, sprite_info, groundPos):
         self.sprite_sheet = sprite_sheet
         self.cactus["LARGE"] = {"x" : sprite_info["CACTUS_LARGE"]["x"]}
         self.cactus["LARGE"]["y"] = sprite_info["CACTUS_LARGE"]["y"]
@@ -220,18 +221,26 @@ class Cactus():
         self.cactus["SMALL"]["y"] = sprite_info["CACTUS_SMALL"]["y"]
         self.cactus["LARGE"]["HEIGHT"] = 100
         self.cactus["LARGE"]["WIDTH"] = 49
+        self.cactus["SMALL"]["HEIGHT"] = 70
+        self.cactus["SMALL"]["WIDTH"] = 34
+        self.offset = 20
+        self.groundPosition = groundPos
         self.cactus["LARGE"]["IMAGE"] = self.sprite_sheet.getImage(self.cactus["LARGE"]["x"],
                                                                    self.cactus["LARGE"]["y"],
                                                                    self.cactus["LARGE"]["WIDTH"],
                                                                    self.cactus["LARGE"]["HEIGHT"])
-        self.cactus["SMALL"]["HEIGHT"] = 70
-        self.cactus["SMALL"]["WIDTH"] = 34
         self.cactus["SMALL"]["IMAGE"] = self.sprite_sheet.getImage(self.cactus["SMALL"]["x"],
                                                                    self.cactus["SMALL"]["y"],
                                                                    self.cactus["SMALL"]["WIDTH"],
                                                                    self.cactus["SMALL"]["HEIGHT"])
-    def setGroundPosition(self, groundYPos):
-        self.cactus["GROUND"] = {"y" : groundYPos}
+    @property
+    def groundPosition(self):
+        return self.cactus["GROUND"]
+    @groundPosition.setter
+    def groundPosition(self, value):
+        #TODO: change it to accept large and small cactus
+        offsetHeight = value - self.cactus["LARGE"]["HEIGHT"] + (self.offset)
+        self.cactus["GROUND"] = {"y" : offsetHeight}
     def updateCactus(self, window, x):
         window.blit(self.getCactus("LARGE"), (x, self.cactus["GROUND"]["y"]))
     def getCactus(self, size):
@@ -243,6 +252,7 @@ class Cactus():
 class Horizon():
     def __init__(self, sprite_sheet, sprite_info, width, height):
         self.config = {}
+        self._offsetHeight = 0
         self.sprite_sheet = sprite_sheet
         self.speed = 1
         self.config["WINDOW"] = {"HEIGHT" : height}
@@ -256,24 +266,39 @@ class Horizon():
                                                                      self.config["HORIZON"]["y"],
                                                                      self.config["HORIZON"]["WIDTH"],
                                                                      self.config["HORIZON"]["HEIGHT"])
-        self.offset = int(self.config["WINDOW"]["HEIGHT"] * 0.05)
+        self.offset = 0.91
+        self.offsetHeight = int((self.config["WINDOW"]["HEIGHT"] * self.offset) - self.config["HORIZON"]["HEIGHT"])
+
+    @property
+    def offsetHeight(self):
+        return self._offsetHeight
+    @offsetHeight.setter
+    def offsetHeight(self, value):
+        self._offsetHeight = value
+    @property
+    def resolution(self):
+        return (self.config["WINDOW"]["WIDTH"], self.config["WINDOW"]["HEIGHT"])
+    @resolution.setter
+    def resolution(self, value):
+        self.config["WINDOW"]["WIDTH"] = value[0]
+        self.config["WINDOW"]["HEIGHT"] = value[1]
+        self.offsetHeight = int((self.config["WINDOW"]["HEIGHT"] - self.config["HORIZON"]["HEIGHT"]) * self.offset)
+#       self.offset = int(self.config["WINDOW"]["HEIGHT"] * 0.05)
     def setSpeed(self, speed):
         self.speed = speed
     def getHorizon(self, window):
         delta = self.rel_x - self.config["HORIZON"]["WIDTH"]
-        window.blit(self.config["HORIZON"]["IMAGE"],
-                    (delta, self.config["WINDOW"]["HEIGHT"] - self.config["HORIZON"]["HEIGHT"] - self.offset))
+#        print("horizon height %d" % (self._offsetHeight))
+        window.blit(self.config["HORIZON"]["IMAGE"],(delta, self._offsetHeight))
         if delta < self.config["HORIZON"]["WIDTH"]:
-            window.blit(self.config["HORIZON"]["IMAGE"],
-                        (self.rel_x, self.config["WINDOW"]["HEIGHT"] - self.config["HORIZON"]["HEIGHT"] - self.offset))
+            window.blit(self.config["HORIZON"]["IMAGE"], (self.rel_x, self._offsetHeight))
         return self.rel_x
     def updateHorizon(self, window):
         delta = self.rel_x - self.config["HORIZON"]["WIDTH"]
-        window.blit(self.config["HORIZON"]["IMAGE"],
-                    (delta, self.config["WINDOW"]["HEIGHT"] - self.config["HORIZON"]["HEIGHT"] - self.offset))
+#        print("horizon height %d" % (self._offsetHeight))
+        window.blit(self.config["HORIZON"]["IMAGE"], (delta, self._offsetHeight))
         if delta < self.config["HORIZON"]["WIDTH"]:
-            window.blit(self.config["HORIZON"]["IMAGE"],
-                        (self.rel_x, self.config["WINDOW"]["HEIGHT"] - self.config["HORIZON"]["HEIGHT"] - self.offset))
+            window.blit(self.config["HORIZON"]["IMAGE"], (self.rel_x, self._offsetHeight))
         self.rel_x -= self.speed
         self.rel_x %= self.config["HORIZON"]["WIDTH"]
         return self.rel_x
@@ -281,30 +306,29 @@ class Horizon():
 def game_window(width, height, displaySettings):
     if width <= 0 or height <= 0:
         raise Exception("Invalid width and height")
-    win = pygame.display.set_mode((width,height),displaySettings)
-#    win.fill( (247,247,247))
+    win = pygame.display.set_mode((width, height), displaySettings)
     return win,width,height
 
-
-
+def getGroundPosition(height):
+    offset  = 24
+    return height + offset
 ##########################################################
 pygame.init()
 FPS = 60
 displaySettings = HWSURFACE|DOUBLEBUF
 initial_x = HDPI["HORIZON"]["x"]
 initial_y = HDPI["HORIZON"]["y"]
-window,WIDTH,HEIGHT = game_window(resolution["1280_720"]["WIDTH"], resolution["1280_720"]["HEIGHT"], displaySettings)
-groundYPos = HEIGHT - background_height - int(HEIGHT*0.13)
 msPerFrame = math.ceil(1000 / FPS)
+window,WIDTH,HEIGHT = game_window(resolution["1280_720"]["WIDTH"], resolution["1280_720"]["HEIGHT"], displaySettings)
 sprite_sheet = SpriteSheet(image_sheet)
+horizon = Horizon(sprite_sheet, HDPI, WIDTH, HEIGHT)
+horizon.setSpeed(6)
+groundYPos = getGroundPosition(horizon.offsetHeight)
 dinoXPos = int(WIDTH * 0.02)
 cloud = Cloud(sprite_sheet, HDPI)
 yPos = groundYPos
-cactus = Cactus(sprite_sheet, HDPI)
-cactus.setGroundPosition(groundYPos)
+cactus = Cactus(sprite_sheet, HDPI, groundYPos)
 dino = Dino(sprite_sheet, HDPI, groundYPos, dinoXPos, FPS)
-horizon = Horizon(sprite_sheet, HDPI, WIDTH, HEIGHT)
-horizon.setSpeed(6)
 run = True
 new_x = initial_x
 new_background_width = 0
@@ -312,7 +336,7 @@ clock = pygame.time.Clock()
 old_time = pygame.time.get_ticks()
 duck = False
 collided = False
-
+changeResolution = False
 while run:
     new_time = pygame.time.get_ticks()
     waited = new_time - old_time
@@ -331,15 +355,29 @@ while run:
         duck = True
         print("Duck")
     if keys[pygame.K_F5]:
+        changeResolution = True
         window,WIDTH,HEIGHT = game_window(resolution["1280_720"]["WIDTH"], resolution["1280_720"]["HEIGHT"],
                                           displaySettings)
     elif keys[pygame.K_F6]:
+        changeResolution = True
         window,WIDTH,HEIGHT = game_window(resolution["1920_1080"]["WIDTH"], resolution["1920_1080"]["HEIGHT"],
                                           displaySettings)
     elif keys[pygame.K_F7]:
+        changeResolution = True
         window,WIDTH,HEIGHT = game_window(resolution["2560_1440"]["WIDTH"], resolution["2560_1440"]["HEIGHT"],
                                           displaySettings)
+    #Create a handler which registers all of the objects which needs the new changes of the resolution
+    if changeResolution:
+        horizon.resolution = (WIDTH, HEIGHT)
+        groundYPos = getGroundPosition(horizon.offsetHeight)
+        print("Height: %d ground position: %d" % (HEIGHT, groundYPos))
+        dino.groundYPos = groundYPos
+        cactus.groundPosition = groundYPos
+        horizon.groundPosition = groundYPos
+        changeResolution = False
+
     window.fill( (247,247,247))
+
     if collided:
         currentX = horizon.getHorizon(window)
         window.blit(dino.getFrame(), (dinoXPos, yPos))
@@ -347,15 +385,13 @@ while run:
         currentX = horizon.updateHorizon(window)
         collided = dino.collide((currentX, currentX + cactus.getWidth()),
                                 (groundYPos - cactus.getHeight(), groundYPos))
-        if dino.isJumping():
-            yPos = dino.yPos
-        else:
-            yPos = groundYPos
+        yPos = dino.yPos
         window.blit(dino.getFrame(), (10, yPos))
     cactus.updateCactus(window, currentX)
     window.blit(cloud.getCloud(), (int(WIDTH*0.1), int(HEIGHT*0.15)))
     pygame.display.update()
-    if waited < 60:
-        time.sleep(1.0/(120 - waited))
+    print("ms per frame Waited: %d" % (waited))
+    if waited < msPerFrame:
+        time.sleep((msPerFrame - waited)/1000)
 
 pygame.quit()
